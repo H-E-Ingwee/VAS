@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1E90FF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>VOCI Brand Alignment System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        vociBlue: '#1E90FF',
+                        vociRed: '#BF0000',
+                        vociGold: '#D4A017',
+                        vociDark: '#1A1A1A'
+                    },
+                    fontFamily: {
+                        heading: ['Montserrat', 'sans-serif'],
+                        body: ['Open Sans', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Open Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        h1, h2, h3, h4, h5, h6, .font-heading { font-family: 'Montserrat', sans-serif; }
+        
+        .drag-active { border-color: #1E90FF; background-color: rgba(30, 144, 255, 0.05); }
+        .score-circle { background: conic-gradient(var(--ring-color, #1E90FF) var(--percentage), #e5e7eb 0); }
+        
+        .spinner {
+            border: 4px solid rgba(30, 144, 255, 0.1);
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            border-left-color: #1E90FF;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Print Styles for PDF Generation */
+        @media print {
+            body { background: white; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            main { grid-template-columns: 1fr !important; gap: 0 !important; padding: 0 !important; }
+            .md\:col-span-7 { grid-column: span 12 / span 12 !important; }
+            .shadow-sm { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
+            #results-dashboard { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b-4 border-vociBlue sticky top-0 z-40 no-print">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-vociBlue text-white rounded-lg font-heading font-bold flex items-center justify-center text-xl shadow-inner">V</div>
+                <div>
+                    <h1 class="font-heading font-bold text-lg md:text-xl text-vociDark leading-tight">VOCI</h1>
+                    <p class="text-[10px] md:text-xs text-gray-500 uppercase tracking-wider font-semibold">Brand Alignment</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSettings()" class="text-gray-500 hover:text-vociBlue transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i class="fas fa-cog text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow w-full">
+        
+        <!-- Left Column: Controls & History -->
+        <div class="lg:col-span-4 flex flex-col gap-6 no-print">
+            
+            <!-- Upload Area -->
+            <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="font-heading font-bold text-lg mb-1 text-vociDark">Scan Document</h2>
+                <p class="text-xs text-gray-500 mb-4">Upload a flyer, poster, or doc image.</p>
+                
+                <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 md:p-8 text-center cursor-pointer transition-all hover:border-vociBlue hover:bg-blue-50 relative group">
+                    <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/png, image/jpeg, image/webp">
+                    <div class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition-colors">
+                        <i class="fas fa-image text-xl text-vociBlue"></i>
+                    </div>
+                    <h3 class="font-heading font-semibold text-gray-700 text-sm">Tap to Upload</h3>
+                    <p class="text-[11px] text-gray-400 mt-1">or drag & drop (JPG, PNG)</p>
+                </div>
+
+                <div id="preview-container" class="hidden mt-4">
+                    <div class="relative rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                        <img id="image-preview" src="" alt="Document Preview" class="w-full h-48 object-contain">
+                        <button id="clear-btn" class="absolute top-2 right-2 bg-white/90 backdrop-blur text-red-500 rounded-full w-8 h-8 flex items-center justify-center shadow hover:bg-red-50 transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <button id="analyze-btn" class="w-full mt-4 bg-vociBlue hover:bg-blue-600 active:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors shadow-md flex justify-center items-center gap-2">
+                        <i class="fas fa-magic"></i> Run AI Analysis
+                    </button>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hidden md:block" id="history-panel">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-heading font-bold text-sm text-gray-700">Recent Scans</h3>
+                    <button onclick="clearHistory()" class="text-xs text-red-500 hover:underline">Clear</button>
+                </div>
+                <div id="history-list" class="space-y-3">
+                    <!-- History items injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Results Dashboard -->
+        <div class="lg:col-span-8 flex flex-col w-full h-full">
+            
+            <!-- Dynamic States Container -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex-grow relative overflow-hidden">
+                
+                <!-- Empty State -->
+                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-gray-50/50">
+                    <img src="https://api.iconify.design/lucide:shield-check.svg?color=%231E90FF&width=64" alt="Shield" class="opacity-50 mb-4">
+                    <h2 class="font-heading font-bold text-xl text-gray-400">Brand Integrity Check</h2>
+                    <p class="text-gray-400 mt-2 text-sm max-w-sm">Ensure your local chapter materials meet the global VOCI standard before publishing.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loading-state" class="hidden absolute inset-0 bg-white/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-8 text-center">
+                    <div class="spinner mb-5"></div>
+                    <h2 class="font-heading font-bold text-xl text-vociBlue animate-pulse">Analyzing Alignment...</h2>
+                    <p class="text-gray-500 mt-2 text-sm" id="loading-text">Extracting typography and brand colors...</p>
+                </div>
+
+                <!-- Error State -->
+                <div id="error-state" class="hidden absolute inset-0 bg-red-50 flex flex-col items-center justify-center p-8 text-center">
+                    <i class="fas fa-exclamation-triangle text-4xl text-vociRed mb-4"></i>
+                    <h2 class="font-heading font-bold text-xl text-vociRed">Analysis Halted</h2>
+                    <p id="error-message" class="text-red-700 mt-2 text-sm max-w-sm"></p>
+                    <button onclick="resetUI()" class="mt-6 px-5 py-2 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-gray-50 transition-colors">Acknowledge</button>
+                </div>
+
+                <!-- Results Dashboard -->
+                <div id="results-dashboard" class="hidden h-full flex flex-col">
+                    
+                    <!-- Print Header (Hidden on screen) -->
+                    <div class="hidden print-only p-8 pb-0 border-b border-gray-200">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-8 h-8 bg-vociBlue text-white rounded font-heading font-bold flex items-center justify-center">V</div>
+                            <h1 class="font-heading font-bold text-xl text-vociDark">VOCI Official Compliance Report</h1>
+                        </div>
+                        <p class="text-sm text-gray-500" id="print-date"></p>
+                    </div>
+
+                    <!-- Header & Score -->
+                    <div class="p-6 md:p-8 border-b border-gray-100 flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 bg-gradient-to-br from-white to-gray-50">
+                        <div class="relative w-32 h-32 score-circle rounded-full flex items-center justify-center shrink-0 shadow-inner" id="score-ring" style="--percentage: 0%; --ring-color: #1E90FF;">
+                            <div class="w-28 h-28 bg-white rounded-full flex flex-col items-center justify-center shadow-sm">
+                                <span id="score-text" class="font-heading font-bold text-4xl text-vociDark">0%</span>
+                                <span class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Score</span>
+                            </div>
+                        </div>
+                        <div class="text-center md:text-left flex-grow">
+                            <h2 class="font-heading font-bold text-2xl md:text-3xl text-vociDark mb-1" id="score-title">Alignment Score</h2>
+                            <p class="text-gray-600 text-sm mb-3" id="score-subtitle">Evaluating...</p>
+                            <div id="approval-badge" class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border">
+                                <!-- Badge injected here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Toolbar -->
+                        <div class="no-print flex md:flex-col gap-2 w-full md:w-auto mt-4 md:mt-0">
+                            <button onclick="window.print()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-semibold shadow-sm">
+                                <i class="fas fa-file-pdf"></i> Export
+                            </button>
+                            <button onclick="resetFile()" class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-semibold shadow-sm">
+                                <i class="fas fa-redo"></i> New Scan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-4 bg-white">
+                        <div class="p-4 rounded-xl border border-gray-100 flex items-start gap-4">
+                            <div id="icon-typography" class="mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0"></div>
+                            <div>
+                                <h4 class="font-heading font-bold text-sm text-vociDark">Typography</h4>
+                                <p class="text-xs text-gray-600 mt-1" id="desc-typography"></p>
+                            </div>
+                        </div>
+                        <div class="p-4 rounded-xl border border-gray-100 flex items-start gap-4">
+                            <div id="icon-colors" class="mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0"></div>
+                            <div>
+                                <h4 class="font-heading font-bold text-sm text-vociDark">Brand Colors</h4>
+                                <p class="text-xs text-gray-600 mt-1" id="desc-colors"></p>
+                            </div>
+                        </div>
+                        <div class="p-4 rounded-xl border border-gray-100 flex items-start gap-4">
+                            <div id="icon-tone" class="mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0"></div>
+                            <div>
+                                <h4 class="font-heading font-bold text-sm text-vociDark">Voice & Tone</h4>
+                                <p class="text-xs text-gray-600 mt-1" id="desc-tone"></p>
+                            </div>
+                        </div>
+                        <div class="p-4 rounded-xl border border-gray-100 flex items-start gap-4">
+                            <div id="icon-logo" class="mt-0.5 w-10 h-10 rounded-full flex items-center justify-center shrink-0"></div>
+                            <div>
+                                <h4 class="font-heading font-bold text-sm text-vociDark">Logo Placement</h4>
+                                <p class="text-xs text-gray-600 mt-1" id="desc-logo"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actionable Feedback -->
+                    <div class="p-6 md:p-8 pt-0 flex-grow bg-white">
+                        <h3 class="font-heading font-bold text-lg mb-4 flex items-center gap-2 border-b border-gray-100 pb-2">
+                            <i class="fas fa-clipboard-check text-vociBlue"></i> Required Revisions
+                        </h3>
+                        <ul id="feedback-list" class="space-y-3">
+                            <!-- Feedback items injected here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal (For GitHub deployment API Key setup) -->
+    <div id="settings-modal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 opacity-0 transition-opacity">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform scale-95 transition-transform" id="settings-content">
+            <div class="bg-vociBlue px-6 py-4 flex justify-between items-center text-white">
+                <h3 class="font-heading font-bold text-lg"><i class="fas fa-sliders-h mr-2"></i> System Settings</h3>
+                <button onclick="toggleSettings()" class="text-white/80 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Gemini API Key</label>
+                    <p class="text-xs text-gray-500 mb-3">Required to run the AI analysis. Get yours from Google AI Studio.</p>
+                    <input type="password" id="api-key-input" placeholder="AIzaSy..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-vociBlue focus:ring-2 focus:ring-blue-100 transition-all font-mono text-sm">
+                </div>
+                <button onclick="saveSettings()" class="w-full bg-gray-900 hover:bg-black text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-sm">
+                    Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Environment & Setup ---
+        // Fallback key from execution environment if available
+        const defaultEnvKey = typeof apiKey !== 'undefined' ? apiKey : ""; 
+        
+        // --- State Variables ---
+        let currentFileBase64 = null;
+        let currentMimeType = null;
+        let originalImageSrc = null;
+
+        // --- DOM Elements ---
+        const UI = {
+            dropZone: document.getElementById('drop-zone'),
+            fileInput: document.getElementById('file-input'),
+            previewContainer: document.getElementById('preview-container'),
+            imagePreview: document.getElementById('image-preview'),
+            states: {
+                empty: document.getElementById('empty-state'),
+                loading: document.getElementById('loading-state'),
+                error: document.getElementById('error-state'),
+                results: document.getElementById('results-dashboard')
+            },
+            modal: document.getElementById('settings-modal'),
+            modalContent: document.getElementById('settings-content'),
+            apiKeyInput: document.getElementById('api-key-input'),
+            historyList: document.getElementById('history-list'),
+            historyPanel: document.getElementById('history-panel')
+        };
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+            UI.apiKeyInput.value = localStorage.getItem('voci_api_key') || "";
+            
+            // Check if key exists anywhere, if not, prompt settings
+            if (!getEffectiveApiKey()) {
+                setTimeout(toggleSettings, 1000);
+            }
+        });
+
+        // --- Helpers ---
+        function getEffectiveApiKey() {
+            return localStorage.getItem('voci_api_key') || defaultEnvKey;
+        }
+
+        // --- Modals & Settings ---
+        function toggleSettings() {
+            const isHidden = UI.modal.classList.contains('hidden');
+            if (isHidden) {
+                UI.modal.classList.remove('hidden');
+                // Trigger reflow
+                void UI.modal.offsetWidth;
+                UI.modal.classList.remove('opacity-0');
+                UI.modalContent.classList.remove('scale-95');
+            } else {
+                UI.modal.classList.add('opacity-0');
+                UI.modalContent.classList.add('scale-95');
+                setTimeout(() => UI.modal.classList.add('hidden'), 300);
+            }
+        }
+
+        function saveSettings() {
+            const key = UI.apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('voci_api_key', key);
+            } else {
+                localStorage.removeItem('voci_api_key');
+            }
+            toggleSettings();
+        }
+
+        // --- File Handling & Optimization ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            UI.dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            UI.dropZone.addEventListener(eventName, () => UI.dropZone.classList.add('drag-active'), false);
+        });
+
+        ['draglea
